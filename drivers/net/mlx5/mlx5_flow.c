@@ -5584,10 +5584,30 @@ struct rte_flow *
 mlx5_flow_create(struct rte_eth_dev *dev,
 		 const struct rte_flow_attr *attr,
 		 const struct rte_flow_item items[],
-		 const struct rte_flow_action actions[],
+		 const struct rte_flow_action _actions[],
 		 struct rte_flow_error *error)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
+	struct rte_flow_action actions[20];
+	int i;
+
+	i = 1;
+	actions[0].type = RTE_FLOW_ACTION_TYPE_VOID;
+	actions[0].conf = NULL;
+	while (_actions && _actions->type != RTE_FLOW_ACTION_TYPE_END) {
+		if (is_flow_tunnel_steer_rule(dev, attr, items, _actions)) {
+			actions[0].type = _actions->type;
+			actions[0].conf = _actions->conf;
+		} else {
+			actions[i].type = _actions->type;
+			actions[i].conf = _actions->conf;
+			i++;
+		}
+		_actions++;
+	}
+	actions[i].type = RTE_FLOW_ACTION_TYPE_END;
+	actions[i].conf = NULL;
+
 
 	/*
 	 * If the device is not started yet, it is not allowed to created a
